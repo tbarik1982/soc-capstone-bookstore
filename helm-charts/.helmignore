@@ -1,0 +1,16 @@
+#Patterns to ignore when building packages
+.git/
+.gitignore
+.svn/
+.hg/
+
+#Common backup files
+*.tmp
+*~
+*.swp
+*.bak
+
+#Various IDS
+.project
+.idea/
+*.tmpproj

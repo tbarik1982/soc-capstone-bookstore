@@ -1,0 +1,12 @@
+name: soc-capstone-bookstore
+version: 1.0.0
+appVersion: 1.0.0
+keywords:
+  - soc-capstone-bookstore
+description: SOC Capstone Bookstore
+apiVersion: v1
+source: 
+- https://github.com/tbarik1982/soc-capstone-bookstore
+maitainers:
+- name: SOC Team
+  email: tbarik1982@gmail.com

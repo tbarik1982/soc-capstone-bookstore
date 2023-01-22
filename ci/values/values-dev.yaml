@@ -1,0 +1,11 @@
+fullnameOverride: "soc-capstone-bookstore"
+nameOverride: "soc-capstone-bookstore"
+replicaCount: 1
+environment: dev
+
+logvalue:
+   logging: 
+      level: 
+         root: error
+
+replicationFactor: 3         

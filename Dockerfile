@@ -1,11 +1,4 @@
-FROM ubuntu
-MAINTAINER saiteja
-WORKDIR /opt/java
-ADD openjdk-11.0.2_linux-x64_bin.tar.gz .
-ENV JAVA_HOME /opt/java/jdk-11.0.2
-ENV PATH $PATH:$JAVA_HOME/bin
-WORKDIR /opt/tomcat
-ADD apache-tomcat-8.5.49.tar.gz .
-COPY ILP_Bookstore.war  /opt/tomcat/apache-tomcat-8.5.49/webapps
+FROM tomcat:latest
+COPY /target/soc-capstone-bookstore.war  /usr/local/tomcat/webapps/
 EXPOSE 8080
-CMD ["/opt/tomcat/apache-tomcat-8.5.49/bin/catalina.sh","run"]
+CMD ["catalina.sh","run"]
