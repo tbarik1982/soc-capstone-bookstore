@@ -1,0 +1,68 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: dev-deployment
+  labels:
+    apps: web-based
+  annotations:
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: mem-cpu-quota
+  namespace: dev-deployment
+spec:
+  hard:
+    requests.cpu: "4"
+    requests.memory: 8Gi
+    limits.cpu: "8"
+    limits.memory: 16Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bookstore
+  labels:
+    app: dev
+  namespace: dev-deployment
+  annotations:
+    monitoring: "true"
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: dev
+  template:
+    metadata:
+      labels:
+        app: dev
+    spec:
+      containers:
+      - image: tbarik1982/soc-capstone-bookstore:latest
+        name: bookstore
+        ports:
+        - containerPort: 8080
+        resources:
+          limits:
+            memory: "2Gi"
+            cpu: "1000m"
+          requests:
+            memory: "1Gi"
+            cpu: "500m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: dev
+  name: dev-service
+  namespace: dev-deployment
+spec:
+  ports:
+  - nodePort: 30000
+    port: 8080
+    protocol: TCP
+    targetPort: 8080
+  selector:
+    app: dev
+  type: LoadBalancer
