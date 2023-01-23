@@ -1,47 +1,66 @@
-node(){
-    stage("git clone"){
-       checkout([$class: 'GitSCM', branches: [[name: '*/master']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'GITHUB', url: 'https://github.com/Saiteju1997/Capstone-B19-bookstoreV1.0.git']]])      }
-    stage('SonarQube analysis') {
-        def scannerHome = tool 'Sonar-3.2';
-        def mavenhome = tool  name: 'Maven2' , type: 'maven';
-        withSonarQubeEnv('Sonar') {
-        sh 'mvn org.sonarsource.scanner.maven:sonar-maven-plugin:3.3.0.603:sonar'
-      }
-    }    
-    stage("build-upload artifacts"){
-        def server = Artifactory.server 'jfrog'
-        def rtMaven = Artifactory.newMavenBuild()
-        rtMaven.resolver server: server, releaseRepo: 'libs-release', snapshotRepo: 'libs-snapshot'
-        rtMaven.deployer server: server, releaseRepo: 'libs-release-local', snapshotRepo: 'libs-snapshot-local'
-        rtMaven.tool = 'Maven2'
-        def buildInfo = rtMaven.run pom: 'pom.xml', goals: 'clean package'
+pipeline {
+
+    agent any
+
+    environment {
+        //once you create ACR in Azure cloud, use that here
+        registryName = "socprojectacr"
+        registryCredential = 'ACR'
+        registryUrl = 'socprojectacr.azurecr.io'
+        dockerImage = ''
     }
-    stage("copying required files"){
-        sh "scp -o StrictHostKeyChecking=no target/*.war root@docker-master:/inet/projects"
-        sh "scp -o StrictHostKeyChecking=no Dockerfile root@docker-master:/inet/projects"
-        sh "scp -o StrictHostKeyChecking=no kubernetes-deployment.yml root@k8smaster:/inet/projects"
-   }
 
-
-    stage("Building the Docker image"){ 
-        sh 'docker build -t bookstore.app.v1.$BUILD_ID /inet/projects'
-        sh 'docker tag bookstore.app.v1.$BUILD_ID steju480/bookstore.app.v1.$BUILD_ID'
-        sh 'docker tag bookstore.app.v1.$BUILD_ID steju480/bookstore.app.v1'
+    tools {
+        maven 'maven-3.8.7'
     }
-    stage("Docker image push"){
-        withCredentials([usernamePassword(credentialsId: 'dockerhub', passwordVariable: 'password', usernameVariable: 'user')]) {
-            sh "docker login -u ${user} -p ${password}"
-            sh 'docker login -u steju480 -p Steju@1997'
-            sh 'docker push steju480/bookstore.app.v1.$BUILD_ID'
-            sh 'docker push steju480/bookstore.app.v1'
-            sh 'docker rmi steju480/bookstore.app.v1.$BUILD_ID'
-            sh 'docker rmi steju480/bookstore.app.v1' 
-            sh 'docker rmi bookstore.app.v1.$BUILD_ID'
-          }                        
-      }  
-     stage("deploying the app"){     
-        sh 'aws eks --region <region-code> update-kubeconfig --name mycluster'
-        sh "kubectl delete -f /inet/projects/kubernetes-deployment.yml"
-        sh "kubectl create -f /inet/projects/kubernetes-deployment.yml"
 
-}      
+    stages {
+
+        stage ('Checkout') {
+            steps {
+                checkout scmGit(branches: [[name: '*/master']], extensions: [], userRemoteConfigs: [[url: 'https://github.com/tbarik1982/soc-capstone-bookstore.git']])
+            }
+        }
+
+        stage ('Initialize') {
+            steps {
+                sh '''
+                    echo "PATH = ${PATH}"
+                    echo "M2_HOME = ${M2_HOME}"
+                '''
+            }
+        }
+
+        stage ('Build') {
+            steps {
+                sh 'mvn clean package'
+            }
+        }
+
+        stage ('Build Docker image') {
+            steps {
+
+                script {
+                    dockerImage = docker.build registryName
+                }
+            }
+        }
+
+        // Uploading Docker images into ACR
+        stage('Upload Image to ACR') {
+             steps{
+                 script {
+                    docker.withRegistry( "http://${registryUrl}", registryCredential ) {
+                    dockerImage.push()
+                    }
+                }
+             }
+        }
+
+        stage("deploying the app"){
+                sh "kubectl apply -f /inet/projects/kubernetes-deployment.yml"
+        }
+    }
+
+}
+
